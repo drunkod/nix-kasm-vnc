@@ -13,9 +13,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build-www-x86:
+    name: Build shared web assets (x86_64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build kasmvnc-www
+        run: |
+          set -euo pipefail
+          WWW_OUT="$(nix build --print-out-paths --no-link .#kasmvnc-www | tail -n1)"
+          mkdir -p prebuilt-www
+          cp -a "$WWW_OUT"/. prebuilt-www/
+
+      - name: Upload shared web assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuilt-kasmvnc-www
+          path: prebuilt-www
+          if-no-files-found: error
+
   build:
     name: Build ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
+    needs: build-www-x86
     strategy:
       fail-fast: false
       matrix:
@@ -35,7 +64,15 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
+      - name: Download shared web assets
+        uses: actions/download-artifact@v4
+        with:
+          name: prebuilt-kasmvnc-www
+          path: prebuilt-www
+
       - name: Build release artifacts
+        env:
+          KASMVNC_WEB_DIST_OVERRIDE: ${{ github.workspace }}/prebuilt-www
         run: ./build-dist.sh
 
       - name: Package release files

@@ -170,6 +170,18 @@
           };
         };
 
+        # Optional prebuilt web assets path for ARM-friendly split builds.
+        # Use `KASMVNC_WEB_DIST_OVERRIDE=/abs/path --impure` to enable.
+        kasmvncWebDistOverride = builtins.getEnv "KASMVNC_WEB_DIST_OVERRIDE";
+        kasmvncWebDist =
+          if kasmvncWebDistOverride != "" then
+            builtins.path {
+              path = kasmvncWebDistOverride;
+              name = "kasmvnc-www-override";
+            }
+          else
+            kasmvncWeb;
+
         kasmvncDerivation = pkgs.stdenv.mkDerivation {
           pname = "kasmvnc";
           version = "1.3.4";
@@ -188,15 +200,15 @@
           KASMVNC_BUILD_OS_CODENAME = "nixos";
           XORG_TARBALL_PATH = xorgServerTarball;
           MESA_DRI_DRIVERS = "${pkgs.mesa}/lib/dri";
-          KASMVNC_WEB_DIST = kasmvncWeb;
+          KASMVNC_WEB_DIST = kasmvncWebDist;
 
           dontConfigure = true;
 
           preBuild = ''
-            echo "Copying web assets from ${kasmvncWeb}..."
+            echo "Copying web assets from $KASMVNC_WEB_DIST..."
             mkdir -p kasmweb/dist builder/www
-            cp -r --no-preserve=mode,ownership ${kasmvncWeb}/* kasmweb/dist/
-            cp -r --no-preserve=mode,ownership ${kasmvncWeb}/* builder/www/
+            cp -r --no-preserve=mode,ownership "$KASMVNC_WEB_DIST"/* kasmweb/dist/
+            cp -r --no-preserve=mode,ownership "$KASMVNC_WEB_DIST"/* builder/www/
             chmod -R u+rwX kasmweb/dist builder/www
 
             # Reduce peak disk usage during package creation:

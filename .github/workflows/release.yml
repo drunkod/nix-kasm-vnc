@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build release artifacts
+        run: ./build-dist.sh
+
+      - name: Package release files
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-assets
+          tar -C dist -czf "release-assets/kasmvnc-${GITHUB_REF_NAME}.tar.gz" kasmvnc
+          tar -C dist -czf "release-assets/kasmvnc-www-${GITHUB_REF_NAME}.tar.gz" kasmvnc-www
+          cp dist/BUILD_INFO "release-assets/BUILD_INFO-${GITHUB_REF_NAME}.txt"
+          sha256sum release-assets/* > "release-assets/SHA256SUMS-${GITHUB_REF_NAME}.txt"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/kasmvnc-${{ github.ref_name }}.tar.gz
+            release-assets/kasmvnc-www-${{ github.ref_name }}.tar.gz
+            release-assets/BUILD_INFO-${{ github.ref_name }}.txt
+            release-assets/SHA256SUMS-${{ github.ref_name }}.txt

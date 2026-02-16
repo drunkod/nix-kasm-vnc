@@ -175,6 +175,9 @@
           version = "1.3.4";
 
           src = pkgs.lib.cleanSource kasmvncSrc;
+          patches = pkgs.lib.optionals (!pkgs.stdenv.hostPlatform.isx86) [
+            ./patches/kasmvnc-no-libcpuid-on-nonx86.patch
+          ];
           stdenv = pkgs.gcc14Stdenv;
 
           nativeBuildInputs = buildDeps ++ devTools ++ [ pkgs.makeWrapper ];

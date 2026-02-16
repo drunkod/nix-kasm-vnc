@@ -83,7 +83,6 @@
           libjpeg_turbo
           libwebp
           tbb
-          libcpuid
           fmt
           libxcrypt
           libxcvt
@@ -96,7 +95,7 @@
           xkeyboard-config
           docbook_xsl
           docbook_xml_dtd_45
-        ];
+        ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isx86 [ libcpuid ];
 
         # Development tools
         devTools = with pkgs; [
